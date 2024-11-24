@@ -8,7 +8,6 @@ import numpy as np
 from queue import Queue
 import tkinter as tk
 from tkintermapview import TkinterMapView
-from scipy.interpolate import interp1d
 
 @dataclass
 class MapCell:
@@ -27,7 +26,7 @@ class Cloud:
 
 class DronePathPlanner:
     def __init__(self):
-        self.current_position = (48.2297, 20.0122)
+        self.current_position = (45.2297, 21.0122)
         self.target_position = None
         self.current_path = []
         self.location_queue = Queue()
@@ -80,7 +79,7 @@ class DronePathPlanner:
             self.update_cloud_coverage(cloud)
         
         self.update_cloud_visualization()
-        self.visualize_inspection_points()
+        # self.visualize_inspection_points()
 
     def visualize_inspection_points(self):
         """Visualize inspection points on the map."""
@@ -180,34 +179,14 @@ class DronePathPlanner:
                 color="blue",
                 width=2
             )
-   
+
     def move_drone(self):
-        """Move drone along a smooth curved path with cloud inspection."""
-        if len(self.current_path) < 2:
-            return  # Not enough points for a path
-        
-        # Generate smooth path using Bezier-like interpolation
-        def generate_smooth_path(path_points, num_interpolated_points=100):
-            path_points = np.array(path_points)
-            latitudes = path_points[:, 0]
-            longitudes = path_points[:, 1]
+        """Move drone along calculated path with cloud inspection."""
+        while True:
+            if not self.current_path:
+                time.sleep(0.05)
+                continue
             
-            # Generate smooth interpolation
-            t = np.linspace(0, 1, len(path_points))  # Parameter t for interpolation
-            interp_lat = interp1d(t, latitudes, kind='cubic')  # Cubic interpolation for latitudes
-            interp_lon = interp1d(t, longitudes, kind='cubic')  # Cubic interpolation for longitudes
-            
-            # Create fine-grained interpolation points
-            t_fine = np.linspace(0, 1, num_interpolated_points)
-            smooth_latitudes = interp_lat(t_fine)
-            smooth_longitudes = interp_lon(t_fine)
-            return list(zip(smooth_latitudes, smooth_longitudes))
-        
-        # Generate smooth path
-        smooth_path = generate_smooth_path(self.current_path)
-        
-        # Drone movement loop
-        for next_position in smooth_path:
             current_time = time.time()
             current_lat, current_lon = self.current_position
             current_grid = self.get_grid_coordinates(current_lat, current_lon)
@@ -216,25 +195,29 @@ class DronePathPlanner:
             if current_time - self.last_inspection_time >= self.inspection_interval:
                 self.inspect_area(current_grid)
                 self.last_inspection_time = current_time
-
-            # Move drone to next position
-            dlat = next_position[0] - current_lat
-            dlon = next_position[1] - current_lon
+            
+            # Move to next point
+            next_target = self.current_path[1] if len(self.current_path) > 1 else self.current_path[0]
+            target_lat, target_lon = next_target
+            
+            dlat = target_lat - current_lat
+            dlon = target_lon - current_lon
             distance = math.sqrt(dlat**2 + dlon**2)
             
             if distance < self.drone_speed:
-                self.current_position = next_position
+                self.current_position = next_target
+                self.current_path = self.current_path[1:]
+                if not self.current_path:
+                    self.flight_mode = "idle"
+                    break
             else:
                 ratio = self.drone_speed / distance
                 new_lat = current_lat + dlat * ratio
                 new_lon = current_lon + dlon * ratio
                 self.current_position = (new_lat, new_lon)
             
-            # Update drone marker and sleep for smooth movement
             self.location_queue.put(self.current_position)
             time.sleep(0.05)
-
-        self.flight_mode = "idle"  # Mark the flight as complete
 
     def inspect_area(self, current_grid: Tuple[int, int]):
         """Inspect the area around the drone's current position."""
@@ -256,7 +239,7 @@ class DronePathPlanner:
                                 cloud.inspection_points.remove((inspect_x, inspect_y))
         
         # Update visualization
-        self.visualize_inspection_points()
+        # self.visualize_inspection_points()
 
     def find_path(self, start: Tuple[int, int], target: Tuple[int, int]) -> List[Tuple[int, int]]:
         """Modified A* pathfinding that considers cloud inspection points."""
@@ -448,7 +431,7 @@ class DronePathPlanner:
                 color="blue",
                 width=2
             )
-
+# Required helper methods (unchanged)
     def get_grid_coordinates(self, lat: float, lon: float) -> Tuple[int, int]:
         center_lat, center_lon = self.current_position
         x = int((lon - center_lon) / self.cell_size + self.map_size[0] / 2)
