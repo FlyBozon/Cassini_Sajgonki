@@ -4,7 +4,7 @@ import numpy as np
 
 def replace_bright_pixels(image_path, output_path, brightness=200, min_cluster_size=100, smooth_kernel_size=3):
     """
-    Przetwarza obraz zamieniając jasne obszary na czarne i zwraca ich kontury.
+    Przetwarza obraz zamieniając jasne obszary na czarne.
 
     Parametry:
     - image_path: ścieżka do obrazu wejściowego
@@ -12,10 +12,6 @@ def replace_bright_pixels(image_path, output_path, brightness=200, min_cluster_s
     - brightness: próg jasności (0-255)
     - min_cluster_size: minimalna wielkość skupiska pikseli
     - smooth_kernel_size: rozmiar kernela do wygładzania (nieparzysta liczba >= 3)
-
-    Zwraca:
-    - Lista punktów konturu
-    - Maska binarna
     """
     if smooth_kernel_size < 3 or smooth_kernel_size % 2 == 0:
         raise ValueError("smooth_kernel_size musi być nieparzystą liczbą >= 3")
@@ -45,38 +41,27 @@ def replace_bright_pixels(image_path, output_path, brightness=200, min_cluster_s
         if size >= min_cluster_size:
             clean_mask[labels == label] = 255
 
-    contours, _ = cv2.findContours(clean_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    y_coords, x_coords = np.where(clean_mask > 0)
+    coordinates = list(zip(x_coords, y_coords))
 
-    boundary_points = []
-    for contour in contours:
-        points = contour.reshape(-1, 2).tolist()
-        boundary_points.extend(points)
+    cv2.imwrite(output_path, clean_mask)
 
-    contour_mask = np.zeros_like(clean_mask)
-    cv2.drawContours(contour_mask, contours, -1, (255), 1)
-
-    cv2.imwrite(output_path, contour_mask)
-
-    return boundary_points, clean_mask
+    return coordinates, clean_mask
 
 
 if __name__ == "__main__":
     input_path = "2024-11-02-00_00_2024-11-02-23_59_Sentinel-2_L2A_True_color.png"
-    output_path = "contour_mask2.jpg"
+    output_path = "fill_mask2.jpg"
 
     try:
-        boundary_points, mask = replace_bright_pixels(
+        coordinates, mask = replace_bright_pixels(
             input_path,
             output_path,
             brightness=165,
             min_cluster_size=2000,
             smooth_kernel_size=5
         )
-        print(f"Przetworzono obraz. Liczba punktów konturu: {len(boundary_points)}")
-
-        with open('boundary_points.txt', 'w') as f:
-            for x, y in boundary_points:
-                f.write(f"{x},{y}\n")
+        print(f"Przetworzono obraz. Liczba wykrytych pikseli: {len(coordinates)}")
 
     except Exception as e:
         print(f"Wystąpił błąd: {str(e)}")
