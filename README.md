@@ -2,12 +2,13 @@
 8th CASSINI Hackathon Poland\
 23-24.11.2024
 
-# Drone Pathfinding Algorithm for Fire Detection
+
+# Concept for Drone Pathfinding Algorithm for Fire Detection
 
 ## Overview
-This algorithm receives information about areas covered by clouds, urban areas, and locations of fire watch towers in forests. Based on this data, the algorithm calculates the optimal path for the drone to inspect high-risk fire zones.
+This document outlines the **concept** for a drone pathfinding algorithm designed to inspect high-risk fire zones. The described approach is not yet implemented but serves as a blueprint for future development.
 
-The algorithm models the area as a graph, where each region is divided into squares. Using graph traversal algorithms (e.g., A*), the drone optimizes its flight path to cover the highest possible area of concern. The drone's altitude affects its scanning capabilities, which are taken into account when determining the optimal route to cover as much area as possible.
+The proposed algorithm calculates optimal drone flight paths based on input data, such as cloud-covered areas, urban zones, and locations of fire watch towers. It aims to maximize the inspection of high-risk areas while efficiently covering the region using graph-based pathfinding techniques (e.g., A*).
 
 ## Key Steps
 
